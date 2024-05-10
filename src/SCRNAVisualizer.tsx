@@ -1,7 +1,7 @@
 // Import required libraries and types
 import React, { FC, useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
-import { UmapData } from './types';
+import { UmapData } from './lib/types';
 
 /**
  * Props interface for ScrnUmapGraph component
@@ -35,11 +35,11 @@ const ScrnUmapGraph: FC<ScrnUmapGraphProps> = ({ data, width, height }) => {
 
       // Scales for x and y axes
       const xScale = d3.scaleLinear()
-        .domain(d3.extent(data, (d) => d.x))
+        .domain(d3.extent(data, (d) => d.x) as [number, number] || [0, 1])
         .range([0, chartWidth]);
 
       const yScale = d3.scaleLinear()
-        .domain(d3.extent(data, (d) => d.y))
+        .domain(d3.extent(data, (d) => d.y) as [number, number] || [0, 1])
         .range([chartHeight, 0]);
 
       // Create axes
