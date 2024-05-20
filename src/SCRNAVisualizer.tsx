@@ -1,85 +1,68 @@
-// Import required libraries and types
-import React, { FC, useEffect, useRef, useState } from 'react';
+import { useRef, useEffect } from 'react';
 import * as d3 from 'd3';
-import { UmapData } from './lib/types';
 
-/**
- * Props interface for ScrnUmapGraph component
- */
-interface ScrnUmapGraphProps {
-  data: UmapData[];
-  width: number;
-  height: number;
-}
-
-/**
- * ScrnUmapGraph: A React component that uses D3.js to create a graph for ScRNA UMAP/t-SNE evaluation.
- */
-const ScrnUmapGraph: FC<ScrnUmapGraphProps> = ({ data, width, height }) => {
-  // Ref to hold the DOM element for the chart
-  const svgRef = useRef<SVGSVGElement>(null);
+function UMAPVisualization({ csvUrl }: { csvUrl: string; }) {
+  const d3Container = useRef(null);
 
   useEffect(() => {
-    // Initialization of D3.js chart
-    const drawChart = () => {
-      if (!svgRef.current) return;
+    // Define the relative path to your CSV file within the src directory
+    // Load and process the CSV file
+    d3.csv(csvUrl).then(data => {
+      const umapData = data.map(d => ({
+        umap1: +d.UMAP_1,
+        umap2: +d.UMAP_2
+      }));
 
-      const svg = d3.select(svgRef.current)
-        .attr('width', width)
-        .attr('height', height);
+      if (d3Container.current) {
+        // Remove any existing SVG to avoid multiple SVGs
+        d3.select(d3Container.current).selectAll('svg').remove();
 
-      // Margins for the chart area
-      const margin = { top: 20, right: 20, bottom: 30, left: 40 };
-      const chartWidth = width - margin.left - margin.right;
-      const chartHeight = height - margin.top - margin.bottom;
+        // Create the SVG container
+        const svg = d3.select(d3Container.current)
+          .append('svg')
+          .attr('width', 800)  // Adjusted width
+          .attr('height', 600); // Adjusted height
 
-      // Scales for x and y axes
-      const xScale = d3.scaleLinear()
-        .domain(d3.extent(data, (d) => d.x) as [number, number] || [0, 1])
-        .range([0, chartWidth]);
+        // Set dimensions and margins for the graph
+        const margin = { top: 20, right: 30, bottom: 30, left: 40 };
+        const width = 800 - margin.left - margin.right;
+        const height = 600 - margin.top - margin.bottom;
 
-      const yScale = d3.scaleLinear()
-        .domain(d3.extent(data, (d) => d.y) as [number, number] || [0, 1])
-        .range([chartHeight, 0]);
+        // Append the main group element
+        const chart = svg.append('g')
+          .attr('transform', `translate(${margin.left}, ${margin.top})`);
 
-      // Create axes
-      const xAxis = d3.axisBottom(xScale).ticks(5);
-      const yAxis = d3.axisLeft(yScale).ticks(5);
+        // Add X axis
+        const x = d3.scaleLinear()
+          .domain(d3.extent(umapData, d => d.umap1) as [number, number] || [1, 1])
+          .range([0, width]);
+        chart.append('g')
+          .attr('transform', `translate(0, ${height})`)
+          .call(d3.axisBottom(x));
 
-      // Append the chart area
-      const chartArea = svg.append('g')
-        .attr('transform', `translate(${margin.left},${margin.top})`);
+        // Add Y axis
+        const y = d3.scaleLinear()
+          .domain(d3.extent(umapData, d => d.umap2) as [number, number] || [1, 1])
+          .range([height, 0]);
+        chart.append('g')
+          .call(d3.axisLeft(y));
 
-      // Add circles for each data point
-      chartArea.selectAll('.point')
-        .data(data)
-        .join('circle')
-        .attr('class', 'point')
-        .attr('cx', (d) => xScale(d.x))
-        .attr('cy', (d) => yScale(d.y))
-        .attr('r', 4)
-        .attr('fill', 'steelblue');
-
-      // Add x-axis
-      chartArea.append('g')
-        .attr('class', 'axis axis-x')
-        .attr('transform', `translate(0,${chartHeight})`)
-        .call(xAxis);
-
-      // Add y-axis
-      chartArea.append('g')
-        .attr('class', 'axis axis-y')
-        .call(yAxis);
-    };
-
-    // Call the drawChart function when the data changes
-    drawChart();
-  }, [data, width, height]);
+        // Add dots
+        chart.selectAll("circle")
+          .data(umapData)
+          .enter()
+          .append("circle")
+          .attr("cx", d => x(d.umap1))
+          .attr("cy", d => y(d.umap2))
+          .attr("r", 1)  // Adjusted radius for better visualization
+          .style("fill", "#69b3a2");
+      }
+    });
+  }, []);
 
   return (
-    // Render the SVG element and attach the chart to it using the ref
-    <svg ref={svgRef} />
+    <div ref={d3Container} />
   );
-};
+}
 
-export default ScrnUmapGraph;
+export default UMAPVisualization;
